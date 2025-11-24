@@ -4,12 +4,16 @@ from src.layers.depthwise_conv import DepthwiseConv
 from src.layers.pointwise_conv import PointwiseConv
 from src.layers.global_avgpool import GlobalAvgPool
 from src.layers.flatten_layer import FlattenLayer
+from src.config import WIDTH_MULTIPLIER, RESOLUTION_MULTIPLIER
 
 class MobileNetBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super(MobileNetBlock, self).__init__()
-        self.depthwise = DepthwiseConv(in_channels, stride=stride)
-        self.pointwise = PointwiseConv(in_channels, out_channels)
+        in_ch = int(in_channels * WIDTH_MULTIPLIER)
+        out_ch = int(out_channels * WIDTH_MULTIPLIER)
+
+        self.depthwise = DepthwiseConv(in_ch, stride=stride)
+        self.pointwise = PointwiseConv(in_ch, out_ch)
     
     def forward(self, x):
         x = self.depthwise(x)
@@ -19,9 +23,11 @@ class MobileNetBlock(nn.Module):
 class MobileNet(nn.Module):
     def __init__(self, num_classes=1000):
         super(MobileNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=2, padding=1, bias=False)
+        # First layer: standard conv
+        in_ch = int(3 * WIDTH_MULTIPLIER)
+        self.conv1 = nn.Conv2d(in_ch, int(32 * WIDTH_MULTIPLIER), kernel_size=3, stride=2, padding=1, bias=False)
         self.bn_relu1 = nn.Sequential(
-            nn.BatchNorm2d(32),
+            nn.BatchNorm2d(int(32 * WIDTH_MULTIPLIER)),
             nn.ReLU(inplace=True)
         )
 
@@ -44,7 +50,7 @@ class MobileNet(nn.Module):
         # Final pooling + classifier
         self.global_pool = GlobalAvgPool()
         self.flatten = FlattenLayer()
-        self.fc = nn.Linear(1024, num_classes)
+        self.fc = nn.Linear(int(1024 * WIDTH_MULTIPLIER), num_classes)
     
     def forward(self, x):
         x = self.conv1(x)
